@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RouteSeo } from "@/components/RouteSeo";
+import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Orderflow from "./pages/Orderflow.tsx";
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <Analytics />
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
