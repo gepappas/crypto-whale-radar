@@ -1,0 +1,253 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Crypto Whale Watch Nexus API",
+    "description": "API for fetching real-time crypto whale transactions, DEX volume, and Hyperliquid L1 analytics.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://crypto-whale-watch-nexus.lovable.app",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/api/whales": {
+      "get": {
+        "summary": "Get recent whale transactions",
+        "description": "Returns a list of large crypto transactions filtered by threshold, blockchain, or asset.",
+        "operationId": "getWhaleTransactions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of transactions to return (default 10)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "min_usd",
+            "in": "query",
+            "description": "Minimum transaction value in USD",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100000
+            }
+          },
+          {
+            "name": "asset",
+            "in": "query",
+            "description": "Filter by asset or trading symbol, e.g. BTC or BTCUSDT",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with array of whale transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tx_hash": {
+                            "type": "string"
+                          },
+                          "asset": {
+                            "type": "string"
+                          },
+                          "amount_usd": {
+                            "type": "number"
+                          },
+                          "transaction_type": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/whales/summary": {
+      "get": {
+        "summary": "Get 24h aggregated whale flow",
+        "description": "Aggregated buy and sell whale flow per asset over the last 24 hours.",
+        "operationId": "getWhaleFlowSummary",
+        "responses": {
+          "200": {
+            "description": "Aggregated whale flow by asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "trades": {
+                            "type": "integer"
+                          },
+                          "total_usd": {
+                            "type": "number"
+                          },
+                          "buy_usd": {
+                            "type": "number"
+                          },
+                          "sell_usd": {
+                            "type": "number"
+                          },
+                          "max_trade_usd": {
+                            "type": "number"
+                          },
+                          "last_seen": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "summary": "Get recent manipulation and whale alerts",
+        "description": "Returns recent market manipulation and whale activity alerts, pinned alerts first.",
+        "operationId": "getAlerts",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of alerts to return (default 100, max 500)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "level": {
+                            "type": "string"
+                          },
+                          "tag": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "pinned": {
+                            "type": "boolean"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan": {
+      "get": {
+        "summary": "Run a live market manipulation scan",
+        "description": "Scores tracked coins for manipulation risk using live market data.",
+        "operationId": "runMarketScan",
+        "responses": {
+          "200": {
+            "description": "Scored coin list with manipulation threat levels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "ts": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "threat": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "number"
+                          },
+                          "change_24h": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
