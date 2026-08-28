@@ -1,10 +1,26 @@
 # Crypto Whale Radar
 
-Crypto Whale Radar is a crypto-market intelligence and trading terminal for detecting unusual whale activity, evaluating manipulation risk, and connecting signals to controlled execution workflows.
+Real-time crypto intelligence platform: whale-transaction tracking, market-manipulation detection, Hyperliquid perps analytics, orderflow scanning, and an AI "council" of trading agents — built as a React/TypeScript SPA with optional Express + Postgres backend.
 
-The project combines a React/Vite dashboard with an optional Express + PostgreSQL API. It includes whale scanning, order-flow monitoring, Hyperliquid exploration, signal evaluation, portfolio tracking, alert history, and the Nexus trading automation suite.
+Detects unusual whale activity, evaluates manipulation risk, and surfaces market transitions through a 24/7 early-warning system. Combines live market feeds, technical analysis, AI-driven signal generation, and optional trading automation under human control.
 
-> **Risk warning:** This software is for research and engineering purposes. Cryptocurrency trading is highly speculative and can result in total loss. Keep dry-run mode enabled until you have independently reviewed the code, infrastructure, exchange permissions, and risk controls.
+![Version](https://img.shields.io/badge/version-0.0.1-blue)
+![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite)
+
+> **Risk warning:** Cryptocurrency trading is highly speculative and can result in total loss. This software is for research and engineering purposes. Keep dry-run mode enabled until you have independently reviewed the code, infrastructure, exchange permissions, and all risk controls.
+
+## Documentation
+
+- [Changelog](./CHANGELOG.md) — release history and notable implementation changes
+- [Roadmap](./ROADMAP.md) — current product direction and planned work
+- [Hyperliquid deployment](./HYPERLIQUID_DEPLOY.md)
+- [Nexus MCP server](./mcp-nexus-bot/README.md)
+
+## What's New
+
+The latest changes are documented in [`CHANGELOG.md`](./CHANGELOG.md). This keeps the main project guide focused on setup and usage while preserving the full engineering history separately.
 
 ## Highlights
 
