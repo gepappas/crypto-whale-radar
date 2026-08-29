@@ -14,6 +14,11 @@ const ALLOWED_HOSTS = new Set([
   'api.binance.com',
   'fapi.binance.com',
   'api.bybit.com',
+  'www.okx.com',
+  'api.kraken.com',
+  'api.exchange.coinbase.com',
+  'api.gateio.ws',
+  'data-api.binance.vision',
   'api.alternative.me',
 ]);
 

@@ -275,7 +275,11 @@ export function installDebugOverlay(): void {
         return res;
       } catch (err) {
         const e = err instanceof Error ? err : undefined;
-        push('fetch', `${method} FAILED ${shortUrl(url)}`, e?.message || String(err), e?.stack);
+        // React Query cancels requests during unmounts and Strict Mode checks.
+        // Abort is expected lifecycle control, not an application failure.
+        if (e?.name !== 'AbortError') {
+          push('fetch', `${method} FAILED ${shortUrl(url)}`, e?.message || String(err), e?.stack);
+        }
         throw err;
       }
     };
