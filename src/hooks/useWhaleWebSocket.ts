@@ -91,25 +91,33 @@ export function useWhaleWebSocket({
       if (!httpAbortRef.current) httpAbortRef.current = new AbortController();
       const signal = httpAbortRef.current.signal;
       // Pairs already include the USDT suffix (e.g. "BTCUSDT") — do NOT append again.
-      const endpoints = pairs.map(sym => proxied(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym.endsWith('USDT') ? sym : sym + 'USDT'}`));
-      // Parallel with manual per-request timeout (no AbortSignal.timeout — wider support, cancellable on unmount)
-      const responses = await Promise.allSettled(
-        endpoints.map(url => {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 8000);
-          const onAbort = () => ctrl.abort();
-          signal.addEventListener('abort', onAbort);
-          return fetch(url, { signal: ctrl.signal }).finally(() => {
-            clearTimeout(timer);
-            signal.removeEventListener('abort', onAbort);
-          });
-        })
-      );
-      responses.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value.ok) {
-          lastMsgTime.current = Date.now();
-        }
+      const symbols = pairs.map(sym => sym.endsWith('USDT') ? sym : sym + 'USDT');
+      const fallbackRequests = symbols.flatMap((symbol) => {
+        const base = symbol.replace(/USDT$/, '');
+        return [
+          { exchange: 'binance', url: proxied(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`) },
+          { exchange: 'binance-vision', url: proxied(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${symbol}`) },
+          { exchange: 'bybit', url: proxied(`https://api.bybit.com/v5/market/tickers?category=linear&symbol=${symbol}`) },
+          { exchange: 'okx', url: proxied(`https://www.okx.com/api/v5/market/ticker?instId=${base}-USDT-SWAP`) },
+          { exchange: 'kraken', url: proxied(`https://api.kraken.com/0/public/Ticker?pair=${base}USD`) },
+          { exchange: 'coinbase', url: proxied(`https://api.exchange.coinbase.com/products/${base}-USD/ticker`) },
+          { exchange: 'gate', url: proxied(`https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${base}_USDT`) },
+        ];
       });
+      // Query independent public feeds in parallel; one blocked exchange must not hide the others.
+      const responses = await Promise.allSettled(fallbackRequests.map(({ url }) => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const onAbort = () => ctrl.abort();
+        signal.addEventListener('abort', onAbort);
+        return fetch(url, { signal: ctrl.signal }).finally(() => {
+          clearTimeout(timer);
+          signal.removeEventListener('abort', onAbort);
+        });
+      }));
+      if (responses.some((res) => res.status === 'fulfilled' && res.value.ok)) {
+        lastMsgTime.current = Date.now();
+      }
     } catch (err) {
       if ((err as DOMException)?.name !== 'AbortError') {
         console.error('[WS] seedFromHttp failed', { error: (err as Error).message });
@@ -133,20 +141,26 @@ export function useWhaleWebSocket({
         const symbol = pairs[0];
         // pairs are already full Binance pair names (e.g. "BTCUSDT") — never re-append USDT.
         const fullPair = symbol.endsWith('USDT') ? symbol : symbol + 'USDT';
-        const res = await fetch(
-          proxied(`https://api.binance.com/api/v3/trades?symbol=${fullPair}&limit=5`),
-          { signal: ctrl.signal }
-        );
-        if (!res.ok) return;
-        const trades = await res.json();
+        const base = fullPair.replace(/USDT$/, '');
+        const providers = [
+          { ex: 'binance', url: proxied(`https://api.binance.com/api/v3/trades?symbol=${fullPair}&limit=5`), parse: (data: any[]) => data.map(t => ({ price: +t.price, qty: +t.qty, sell: !!t.isBuyerMaker })) },
+          { ex: 'bybit', url: proxied(`https://api.bybit.com/v5/market/recent-trade?category=linear&symbol=${fullPair}&limit=5`), parse: (data: any) => (data?.result?.list ?? []).map((t: any) => ({ price: +t.price, qty: +t.size, sell: t.side === 'Sell' })) },
+          { ex: 'okx', url: proxied(`https://www.okx.com/api/v5/market/trades?instId=${base}-USDT-SWAP&limit=5`), parse: (data: any) => (data?.data ?? []).map((t: any) => ({ price: +t.px, qty: +t.sz, sell: t.side === 'sell' })) },
+          { ex: 'coinbase', url: proxied(`https://api.exchange.coinbase.com/products/${base}-USD/trades`), parse: (data: any[]) => (data ?? []).map(t => ({ price: +t.price, qty: +t.size, sell: t.side === 'sell' })) },
+        ];
+        let parsed: { price: number; qty: number; sell: boolean }[] = [];
+        let exchange = 'poll';
+        for (const provider of providers) {
+          try { const res = await fetch(provider.url, { signal: ctrl.signal }); if (res.ok) { parsed = provider.parse(await res.json()); if (parsed.length) { exchange = provider.ex; break; } } } catch { /* try next exchange */ }
+        }
+        if (!parsed.length) return;
         lastMsgTime.current = Date.now();
-        trades.forEach((t: { price: string; qty: string; isBuyerMaker: boolean }) => {
-          const price = parseFloat(t.price), qty = parseFloat(t.qty), usdt = price * qty;
-          if (usdt < optionsRef.current.whaleThr) return;
-          const sym  = symbol.replace(/USDT$/, '');
-          const side = t.isBuyerMaker ? 'SELL' : 'BUY';
-          const cls  = usdt >= 5e6 ? 'ws-mega' : usdt >= 1e6 ? 'ws-big' : 'ws-mid';
-          const trade: WhaleTrade = { ts: Date.now(), sym, side, price, qty, usdt, cls, ex: 'poll' as 'binance' };
+        parsed.forEach((t) => {
+          const usdt = t.price * t.qty;
+          if (!Number.isFinite(usdt) || usdt < optionsRef.current.whaleThr) return;
+          const sym = symbol.replace(/USDT$/, '');
+          const cls = usdt >= 5e6 ? 'ws-mega' : usdt >= 1e6 ? 'ws-big' : 'ws-mid';
+          const trade: WhaleTrade = { ts: Date.now(), sym, side: t.sell ? 'SELL' : 'BUY', price: t.price, qty: t.qty, usdt, cls, ex: exchange as 'binance' };
           optionsRef.current.onWhaleTrade(trade);
         });
       } catch (err) {

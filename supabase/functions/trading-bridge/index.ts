@@ -26,7 +26,7 @@ function describeUpstreamError(source: string, status: number, rawBody: string):
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trading-bridge-path",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
@@ -720,7 +720,8 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   // Strip function name from path
-  const path = url.pathname.replace(/^\/trading-bridge/, "").replace(/^\/api/, "") || "/";
+  const path = req.headers.get("x-trading-bridge-path") ||
+    url.pathname.replace(/^\/trading-bridge/, "").replace(/^\/api/, "") || "/";
 
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
