@@ -10,7 +10,9 @@ import type {
 const FN = "trading-bridge";
 
 async function call<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await safeInvoke<T>(`${FN}${path}`, { body });
+  // Supabase functions.invoke expects the deployed function name separately.
+  // The bridge determines its endpoint from the request pathname.
+  const { data, error } = await safeInvoke<T>(FN, { body, headers: { "x-trading-bridge-path": path } });
   if (error) throw error;
   if (data == null) throw new Error(`${FN}${path}: empty response`);
   return data;
