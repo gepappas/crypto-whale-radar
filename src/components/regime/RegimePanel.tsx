@@ -101,8 +101,8 @@ export function RegimePanel({ reading, history, weights, setWeights, restoreDefa
             className="text-[9px] tracking-widest text-wr-cyan"
             title="How many of the 5 independent signal families (Trend, Derivatives, Flow, Sentiment, Dominance) lean the same way — a more honest breadth read than raw signal count, since several signals within one family are correlated readings of the same underlying thing"
           >
-            🔗 {reading.families.filter((f) => f.score != null && f.score * (reading.score >= 50 ? 1 : -1) > 0.2).length}
-            /{reading.families.filter((f) => f.score != null).length} FAMILIES
+            🔗 {(reading.families ?? []).filter((f) => f.score != null && f.score * (reading.score >= 50 ? 1 : -1) > 0.2).length}
+            /{(reading.families ?? []).filter((f) => f.score != null).length} FAMILIES
           </span>
         )}
 
@@ -158,8 +158,8 @@ export function RegimePanel({ reading, history, weights, setWeights, restoreDefa
           </div>
           <div>
             <h2 className="text-[9px] tracking-widest text-wr-muted mb-1">SIGNALS</h2>
-            {reading.families.map((f) => {
-              const members = reading.signals.filter((s) => SIGNAL_FAMILIES[s.id] === f.id);
+            {(reading.families ?? []).map((f) => {
+              const members = (reading.signals ?? []).filter((s) => SIGNAL_FAMILIES[s.id] === f.id);
               if (members.length === 0) return null;
               return (
                 <div key={f.id} className="mb-1.5">
