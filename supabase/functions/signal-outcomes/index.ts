@@ -141,6 +141,40 @@ async function applyFill(
   return filled;
 }
 
+function familyForSignal(signal: string): string {
+  const value = signal.toLowerCase();
+  if (value.includes('trend') || value.includes('momentum') || value.includes('ema') || value.includes('macd')) return 'trend';
+  if (value.includes('funding') || value.includes('open') || value.includes('oi') || value.includes('derivative')) return 'derivatives';
+  if (value.includes('whale') || value.includes('flow') || value.includes('volume')) return 'flow';
+  if (value.includes('fear') || value.includes('sentiment')) return 'sentiment';
+  return 'breadth';
+}
+
+async function updateLearning(supabase: ReturnType<typeof supabaseClient>) {
+  const { data, error } = await supabase
+    .from('signal_outcomes')
+    .select('signal, outcome_4h')
+    .not('outcome_4h', 'is', null)
+    .limit(5000);
+  if (error) throw error;
+  const aggregates = new Map<string, { sample_count: number; wins: number; losses: number }>();
+  for (const row of data ?? []) {
+    const family = familyForSignal(String(row.signal));
+    const current = aggregates.get(family) ?? { sample_count: 0, wins: 0, losses: 0 };
+    if (current.sample_count >= 5000) continue;
+    current.sample_count++;
+    Number(row.outcome_4h) >= 0 ? current.wins++ : current.losses++;
+    aggregates.set(family, current);
+  }
+  for (const [signal_family, stats] of aggregates) {
+    const winRate = stats.sample_count ? stats.wins / stats.sample_count : 0.5;
+    const rolling_score = (winRate - 0.5) * 2;
+    const learned_adjustment = stats.sample_count < 20 ? 0 : Math.max(-0.25, Math.min(0.25, rolling_score * Math.min(1, stats.sample_count / 100)));
+    await supabase.from('signal_weight_performance').upsert({ signal_family, ...stats, rolling_score, learned_adjustment, last_outcome_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+  }
+  return { families: aggregates.size };
+}
+
 async function fillPrices(supabase: ReturnType<typeof supabaseClient>) {
   // Same three windows and bounds as the Express version's
   // fillOutcomePrices(): the upper bound on each stops retrying a fire old
@@ -203,7 +237,12 @@ Deno.serve(async (req) => {
       case 'record':      return json(await record(supabase, body));
       case 'eval':         return json(await evalSignals(supabase));
       case 'recent':       return json(await recent(supabase, body));
-      case 'fill_prices': return json(await fillPrices(supabase));
+      case 'fill_prices': {
+        const result = await fillPrices(supabase);
+        const learning = await updateLearning(supabase);
+        return json({ ...result, learning });
+      }
+      case 'learn': return json(await updateLearning(supabase));
       default:
         return json({ error: `unknown op "${String(body.op)}"` }, 400);
     }
