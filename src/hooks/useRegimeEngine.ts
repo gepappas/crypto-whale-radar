@@ -5,6 +5,11 @@ import { loadWeights, saveWeights, resetWeights } from '@/lib/regime/weights';
 import { supabase } from '@/integrations/supabase/client';
 import type { RegimeReading, RegimeSnapshot, RegimeWeights } from '@/lib/regime/types';
 
+async function loadLearnedAdjustments(): Promise<Record<string, number>> {
+  const { data } = await supabase.from('signal_weight_performance').select('signal_family, learned_adjustment');
+  return Object.fromEntries((data ?? []).map((row) => [row.signal_family, Number(row.learned_adjustment) || 0]));
+}
+
 async function loadPersistedRegime(): Promise<RegimeReading | null> {
   const { data, error } = await supabase
     .from('regime_state')
@@ -53,6 +58,7 @@ export function useRegimeEngine(local: LocalInputs, enabled = true) {
       // as a graceful fallback for the current browser session.
       const { error: workerError } = await supabase.functions.invoke('regime-worker');
       if (workerError) console.warn('[v0] regime worker unavailable; using local fallback', workerError);
+      const learned = await loadLearnedAdjustments();
       const persisted = await loadPersistedRegime();
       if (persisted) {
         setReading(persisted);
@@ -63,7 +69,12 @@ export function useRegimeEngine(local: LocalInputs, enabled = true) {
         }));
       } else {
         const signals = await collectSignals(localRef.current);
-        setReading(evaluate(signals, weightsRef.current));
+        const adjusted = { ...weightsRef.current };
+        for (const signal of signals) {
+          const family = signal.id.includes('trend') || signal.id.includes('momentum') ? 'trend' : signal.id.includes('funding') || signal.id.includes('oi') ? 'derivatives' : signal.id.includes('flow') || signal.id.includes('whale') ? 'flow' : signal.id.includes('fng') || signal.id.includes('sentiment') ? 'sentiment' : 'breadth';
+          adjusted[signal.id] = Math.max(0, Math.min(30, adjusted[signal.id] * (1 + (learned[family] ?? 0))));
+        }
+        setReading(evaluate(signals, adjusted));
         setHistory(getHistory());
       }
     } finally {
