@@ -2,7 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { collectSignals, type LocalInputs } from '@/lib/regime/signals';
 import { evaluate, rescore, getHistory } from '@/lib/regime/engine';
 import { loadWeights, saveWeights, resetWeights } from '@/lib/regime/weights';
+import { supabase } from '@/integrations/supabase/client';
 import type { RegimeReading, RegimeSnapshot, RegimeWeights } from '@/lib/regime/types';
+
+async function loadPersistedRegime(): Promise<RegimeReading | null> {
+  const { data, error } = await supabase
+    .from('regime_state')
+    .select('score, regime, tier, held_snapshots, agreeing, active, reading, ts')
+    .eq('market', 'global')
+    .maybeSingle();
+  if (error || !data) return null;
+  const payload = (data.reading ?? {}) as Record<string, unknown>;
+  return {
+    ...payload,
+    ts: Date.parse(data.ts),
+    score: Number(data.score),
+    regime: data.regime,
+    tier: data.tier,
+    confirmedRegime: data.tier === 'confirmed' ? data.regime : null,
+    heldSnapshots: Number(data.held_snapshots),
+    agreeing: Number(data.agreeing),
+    active: Number(data.active),
+    reasons: ['Server-side regime worker reading.'],
+  } as unknown as RegimeReading;
+}
 
 const POLL_MS = 5 * 60_000; // one tick per 5 minutes — the shortest persistence horizon
 
@@ -25,9 +48,24 @@ export function useRegimeEngine(local: LocalInputs, enabled = true) {
     runningRef.current = true;
     setLoading(true);
     try {
-      const signals = await collectSignals(localRef.current);
-      setReading(evaluate(signals, weightsRef.current));
-      setHistory(getHistory());
+      // Refresh the durable server-side reading first. If the worker or its
+      // upstream provider is temporarily unavailable, keep the local engine
+      // as a graceful fallback for the current browser session.
+      const { error: workerError } = await supabase.functions.invoke('regime-worker');
+      if (workerError) console.warn('[v0] regime worker unavailable; using local fallback', workerError);
+      const persisted = await loadPersistedRegime();
+      if (persisted) {
+        setReading(persisted);
+        const { data } = await supabase.from('regime_history').select('ts, score, regime, reading').eq('market', 'global').order('ts', { ascending: true }).limit(400);
+        if (data?.length) setHistory(data.map((row) => {
+          const reading = (row.reading ?? {}) as Record<string, unknown>;
+          return { ts: Date.parse(row.ts), score: Number(row.score), regime: row.regime, agreeing: Number(reading.agreeing ?? 0), active: Number(reading.active ?? 0), signals: [] };
+        }));
+      } else {
+        const signals = await collectSignals(localRef.current);
+        setReading(evaluate(signals, weightsRef.current));
+        setHistory(getHistory());
+      }
     } finally {
       runningRef.current = false;
       setLoading(false);
