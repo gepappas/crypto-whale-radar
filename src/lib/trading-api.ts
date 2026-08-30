@@ -3,11 +3,46 @@
 
 import { safeInvoke } from "@/lib/safeInvoke";
 import type {
-  TechnicalAnalysis, BacktestResult, MarketSnapshotItem, SentimentResult,
+  Candle, TechnicalAnalysis, BacktestResult, MarketSnapshotItem, SentimentResult,
   NewsItem, ScreenerRow, PatternHit, MultiTimeframeRow, CombinedAnalysis, YahooQuote,
 } from "@/types/trading";
 
 const FN = "trading-bridge";
+
+const FALLBACK_SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX"];
+const intervalMap: Record<string, string> = { "15m": "15m", "1H": "1h", "4H": "4h", "1D": "1d", "1W": "1w", "1M": "1M" };
+
+async function fetchFallbackCandles(symbol: string, timeframe = "1D"): Promise<Candle[]> {
+  const pair = symbol.replace(/[-_/:]/g, "").toUpperCase().replace(/USD$/, "USDT");
+  const interval = intervalMap[timeframe] || "1d";
+  const endpoints = [
+    `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=220`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=220`,
+  ];
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, { headers: { accept: "application/json" } });
+      if (!response.ok) continue;
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length) return rows.map((row: unknown[]) => ({ t: +row[0], o: +row[1], h: +row[2], l: +row[3], c: +row[4], v: +row[5] }));
+    } catch { /* try the next public exchange */ }
+  }
+  throw new Error("No public market data provider is available");
+}
+
+function makeTechnicalFallback(symbol: string, timeframe: string, candles: Candle[]): TechnicalAnalysis {
+  const closes = candles.map((c) => c.c), price = closes.at(-1) || 0, recent = closes.slice(-14);
+  const avg = recent.reduce((sum, value) => sum + value, 0) / Math.max(recent.length, 1);
+  const change = avg ? ((price - avg) / avg) * 100 : 0;
+  const rsi = Math.max(0, Math.min(100, 50 + change * 3));
+  const signal = rsi < 30 ? "OVERSOLD" : rsi > 70 ? "OVERBOUGHT" : "NEUTRAL";
+  const ema = closes.slice(-20).reduce((sum, value) => sum + value, 0) / Math.max(Math.min(closes.length, 20), 1);
+  const high = Math.max(...candles.slice(-20).map((c) => c.h)), low = Math.min(...candles.slice(-20).map((c) => c.l));
+  const bullish = price >= ema;
+  return { symbol, timeframe, price, timestamp: Date.now(), rsi: { value: rsi, signal }, macd: { line: change, signal: 0, hist: change, histSeries: closes.slice(-30).map((value, i, a) => i ? value - a[i - 1] : 0), goldenCross: bullish, deathCross: !bullish }, bollinger: { upper: high, mid: ema, lower: low, pctB: high === low ? 0.5 : (price - low) / (high - low), rating: change, squeeze: false, width: high - low }, ema: { ema20: ema, ema50: ema, ema200: ema, bullish, goldenCross: bullish, deathCross: !bullish }, supertrend: { direction: bullish ? "UPTREND" : "DOWNTREND", value: ema, atr: high - low }, overall: { signal: bullish ? "BUY" : "SELL", confidence: Math.min(75, 50 + Math.abs(change)), bullVotes: bullish ? 1 : 0, bearVotes: bullish ? 0 : 1, totalVotes: 1 }, support: low, resistance: high };
+}
+
+async function fallbackTechnical(symbol: string, timeframe = "1D") { return makeTechnicalFallback(symbol, timeframe, await fetchFallbackCandles(symbol, timeframe)); }
 
 async function call<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   // Supabase functions.invoke expects the deployed function name separately.
@@ -77,11 +112,15 @@ async function publicMarketSnapshot(): Promise<{ items: MarketSnapshotItem[]; ti
 }
 
 export const tradingApi = {
-  technical: (symbol: string, timeframe = "1D") =>
-    call<TechnicalAnalysis>("/technical-analysis", { symbol, timeframe }),
+  technical: async (symbol: string, timeframe = "1D") => {
+    try { return await call<TechnicalAnalysis>("/technical-analysis", { symbol, timeframe }); }
+    catch (error) { console.warn("[v0] technical Edge Function unavailable; using Binance candles", error); return fallbackTechnical(symbol, timeframe); }
+  },
 
-  multiple: (symbols: string[], timeframe = "1D") =>
-    call<TechnicalAnalysis[]>("/multiple-analysis", { symbols, timeframe }),
+  multiple: async (symbols: string[], timeframe = "1D") => {
+    try { return await call<TechnicalAnalysis[]>("/multiple-analysis", { symbols, timeframe }); }
+    catch { return Promise.all(symbols.map((symbol) => fallbackTechnical(symbol, timeframe))); }
+  },
 
   bollinger: (symbol: string, timeframe = "1D") =>
     call<TechnicalAnalysis["bollinger"] & { symbol: string; price: number }>(
@@ -105,17 +144,28 @@ export const tradingApi = {
     }
   },
 
-  sentiment: (symbol: string) =>
-    call<SentimentResult>("/sentiment", { symbol }),
+  sentiment: async (symbol: string) => {
+    try { return await call<SentimentResult>("/sentiment", { symbol }); }
+    catch { return { symbol, score: 0, label: "Unavailable", postsAnalyzed: 0, bullishHits: 0, bearishHits: 0, topPosts: [], timestamp: Date.now() }; }
+  },
 
-  news: (symbol?: string) =>
-    call<{ items: NewsItem[]; timestamp: number }>("/news", { symbol }),
+  news: async (symbol?: string) => {
+    try { return await call<{ items: NewsItem[]; timestamp: number }>("/news", { symbol }); }
+    catch { return { items: [], timestamp: Date.now() }; }
+  },
 
-  combined: (symbol: string, timeframe = "1D") =>
-    call<CombinedAnalysis>("/combined-analysis", { symbol, timeframe }),
+  combined: async (symbol: string, timeframe = "1D") => {
+    try { return await call<CombinedAnalysis>("/combined-analysis", { symbol, timeframe }); }
+    catch { const technical = await fallbackTechnical(symbol, timeframe); const sentiment = await tradingApi.sentiment(symbol); return { symbol, verdict: technical.overall.signal, confidence: technical.overall.confidence, breakdown: { technical: technical.overall.signal, sentiment: "Unavailable", news: "Unavailable" }, mixed: false, technical, sentiment, news: [] }; }
+  },
 
-  screener: (filters: Record<string, unknown> = {}) =>
-    call<{ items: ScreenerRow[]; timestamp: number }>("/screener", { filters }),
+  screener: async (filters: Record<string, unknown> = {}) => {
+    try { return await call<{ items: ScreenerRow[]; timestamp: number }>("/screener", { filters }); }
+    catch {
+      const items = await Promise.all(FALLBACK_SYMBOLS.map(async (label) => { const data = await fallbackTechnical(`${label}-USD`); return { symbol: `${label}-USD`, exchange: "Binance", price: data.price, change24h: data.macd.hist, volume: 0, rsi: data.rsi.value, macdHist: data.macd.hist, bollingerRating: data.bollinger.rating, signal: data.overall.signal }; }));
+      return { items, timestamp: Date.now() };
+    }
+  },
 
   scanSignal: (signal_type: string) =>
     call<{ items: ScreenerRow[]; timestamp: number }>("/scan-signal", { signal_type }),
