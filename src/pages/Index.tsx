@@ -762,7 +762,11 @@ export default function WhaleRadarApp() {
           coin={councilCoin}
           whaleTrades={whaleFeed}
           regime={regimeReading}
-          llm={councilLlm}
+          llm={councilLlm.apiKey
+            ? councilLlm
+            : aiKey
+              ? { provider: 'anthropic', apiKey: aiKey, model: councilLlm.model }
+              : councilLlm}
           onClose={() => setCouncilCoin(null)}
         />
       )}
