@@ -12,8 +12,18 @@ import type {
   DeskTrackRecord,
 } from '@/types/council';
 
-const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-council`;
-const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined) ||
+  (import.meta.env.SUPABASE_URL as string | undefined) ||
+  '';
+const FN_URL = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1/agent-council` : '';
+const ANON =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
+  '';
 
 export interface CouncilLlmSettings {
   provider: 'lovable' | 'anthropic' | 'openai' | 'openrouter' | 'groq' | 'custom';
@@ -41,6 +51,10 @@ export async function runCouncil(
   signal?: AbortSignal,
 ): Promise<void> {
   let res: Response;
+  if (!FN_URL || !ANON) {
+    handlers.onError('Council configuration is missing — check Supabase connectivity.');
+    return;
+  }
   try {
     res = await fetch(FN_URL, {
       method: 'POST',
