@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Shield, Zap, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getAiSafetyConfig, setAiSafetyConfig, DEFAULT_AI_SAFETY_CONFIG, type AiSafetyConfig } from "@/lib/nexus/aiSafety";
 import { Input } from "@/components/ui/input";
 import {
   getCircuitBreakerConfig,
@@ -26,12 +28,14 @@ export function ExecutionSafetyPanel() {
   const [daily, setDaily] = useState<DailyRiskConfig>(getDailyRiskConfig);
   const [cbState, setCbState] = useState(getCircuitBreakerState);
   const [dayPnl, setDayPnl] = useState(() => getDayPnlFraction());
+  const [aiSafety, setAiSafety] = useState<AiSafetyConfig>(getAiSafetyConfig);
 
   const refresh = () => {
     setCircuit(getCircuitBreakerConfig());
     setDaily(getDailyRiskConfig());
     setCbState(getCircuitBreakerState());
     setDayPnl(getDayPnlFraction());
+    setAiSafety(getAiSafetyConfig());
   };
 
   useEffect(() => {
@@ -120,6 +124,26 @@ export function ExecutionSafetyPanel() {
               </Button>
             </div>
           )}
+
+          <section className="space-y-2 border-t border-border/50 pt-2">
+            <div className="flex items-center justify-between">
+              <div><div className="font-medium">AI execution policy</div><div className="text-[10px] text-muted-foreground">Manual Nexus actions remain separate.</div></div>
+              <span className="text-[9px] uppercase tracking-wider text-amber-400">fail closed</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+              <div className="col-span-2">
+                <label className="text-[9px] text-muted-foreground">AI mode</label>
+                <Select value={aiSafety.mode} onValueChange={(mode: AiSafetyConfig["mode"]) => { const next = { ...aiSafety, mode }; setAiSafetyConfig(next); setAiSafety(next); }}>
+                  <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="disabled">Disabled</SelectItem><SelectItem value="shadow">Shadow only</SelectItem><SelectItem value="live">Live with approval</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <Field label="AI cap $" value={String(aiSafety.maxNotionalUsd)} onChange={(v) => { const next = { ...aiSafety, maxNotionalUsd: Math.max(1, Math.min(100000, Number(v) || 0)) }; setAiSafetyConfig(next); setAiSafety(next); }} />
+              <div className="flex items-center gap-2 pb-1"><Toggle on={aiSafety.humanApprovalRequired} onChange={(humanApprovalRequired) => { const next = { ...aiSafety, humanApprovalRequired }; setAiSafetyConfig(next); setAiSafety(next); }} /><span className="text-[10px]">Human approval</span></div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">AI intents are blocked by default, shadow mode never places orders, and live mode requires explicit approval.</p>
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setAiSafetyConfig(DEFAULT_AI_SAFETY_CONFIG); setAiSafety(DEFAULT_AI_SAFETY_CONFIG); }}><RotateCcw className="w-3 h-3 mr-1" /> Reset AI defaults</Button>
+          </section>
 
           {/* Circuit breaker config */}
           <section className="space-y-2 border-t border-border/50 pt-2">
