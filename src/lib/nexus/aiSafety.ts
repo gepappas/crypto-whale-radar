@@ -41,7 +41,14 @@ function readConfig(): AiSafetyConfig {
 
 export function getAiSafetyConfig(): AiSafetyConfig { return readConfig(); }
 export function setAiSafetyConfig(config: AiSafetyConfig): void {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  if (typeof window === "undefined") return;
+  const safeConfig: AiSafetyConfig = {
+    ...DEFAULT_AI_SAFETY_CONFIG,
+    ...config,
+    maxNotionalUsd: Math.max(0, Number(config.maxNotionalUsd) || 0),
+    cooldownSeconds: Math.max(0, Number(config.cooldownSeconds) || 0),
+  };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(safeConfig));
   window.dispatchEvent(new CustomEvent("nexus:ai-safety:changed"));
 }
 
@@ -86,6 +93,14 @@ export function requestAiExecution(intent: AiExecutionIntent): { allowed: boolea
     auditAiExecution("blocked", intent, "Shadow mode records intent but never places orders");
     return { allowed: false, requiresApproval: false, reason: "Shadow mode: intent recorded, no order placed" };
   }
+  const lastRequest = getAiExecutionAudit().reverse().find((row) =>
+    row.action === "executed" && row.source === intent.source && row.pair === intent.pair,
+  );
+  if (lastRequest && config.cooldownSeconds > 0 && Date.now() - Number(lastRequest.createdAt) < config.cooldownSeconds * 1000) {
+    const reason = `AI cooldown active for ${config.cooldownSeconds}s`;
+    auditAiExecution("blocked", intent, reason);
+    return { allowed: false, requiresApproval: false, reason };
+  }
   if (!config.humanApprovalRequired) return { allowed: true, requiresApproval: false };
   const queued: PendingAiIntent = { ...intent, id: crypto.randomUUID(), createdAt: Date.now(), status: "pending" };
   writePending([...readPending(), queued]);
@@ -100,6 +115,10 @@ export function approveAiExecution(id: string): AiExecutionIntent | null {
   writePending(pending.filter((entry) => entry.id !== id));
   auditAiExecution("approved", item);
   return item;
+}
+
+export function markAiExecutionExecuted(intent: AiExecutionIntent): void {
+  auditAiExecution("executed", intent);
 }
 
 export function rejectAiExecution(id: string, reason = "Rejected by operator"): boolean {
