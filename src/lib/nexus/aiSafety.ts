@@ -17,6 +17,12 @@ export interface AiSafetyConfig {
   cooldownSeconds: number;
 }
 
+export interface PendingAiIntent extends AiExecutionIntent {
+  id: string;
+  createdAt: number;
+  status: "pending";
+}
+
 const CONFIG_KEY = "nexus_ai_safety_v1";
 const AUDIT_KEY = "nexus_ai_audit_v1";
 export const DEFAULT_AI_SAFETY_CONFIG: AiSafetyConfig = {
@@ -53,7 +59,19 @@ export function getAiExecutionAudit(): Array<Record<string, unknown>> {
   try { return JSON.parse(localStorage.getItem(AUDIT_KEY) || "[]"); } catch { return []; }
 }
 
-export function requestAiExecution(intent: AiExecutionIntent): { allowed: boolean; requiresApproval: boolean; reason?: string } {
+const PENDING_KEY = "nexus_ai_pending_v1";
+
+function readPending(): PendingAiIntent[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); } catch { return []; }
+}
+function writePending(items: PendingAiIntent[]) {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(items.slice(-50)));
+  window.dispatchEvent(new CustomEvent("nexus:ai-safety:changed"));
+}
+export function getPendingAiIntents(): PendingAiIntent[] { return readPending(); }
+
+export function requestAiExecution(intent: AiExecutionIntent): { allowed: boolean; requiresApproval: boolean; reason?: string; intentId?: string } {
   const config = readConfig();
   auditAiExecution("requested", intent);
   if (config.mode === "disabled") {
@@ -68,11 +86,27 @@ export function requestAiExecution(intent: AiExecutionIntent): { allowed: boolea
     auditAiExecution("blocked", intent, "Shadow mode records intent but never places orders");
     return { allowed: false, requiresApproval: false, reason: "Shadow mode: intent recorded, no order placed" };
   }
-  return { allowed: true, requiresApproval: config.humanApprovalRequired };
+  if (!config.humanApprovalRequired) return { allowed: true, requiresApproval: false };
+  const queued: PendingAiIntent = { ...intent, id: crypto.randomUUID(), createdAt: Date.now(), status: "pending" };
+  writePending([...readPending(), queued]);
+  return { allowed: false, requiresApproval: true, reason: "Awaiting human approval", intentId: queued.id };
 }
 
-export function approveAiExecution(intent: AiExecutionIntent): boolean {
-  if (readConfig().mode !== "live") return false;
-  auditAiExecution("approved", intent);
+export function approveAiExecution(id: string): AiExecutionIntent | null {
+  if (readConfig().mode !== "live") return null;
+  const pending = readPending();
+  const item = pending.find((entry) => entry.id === id);
+  if (!item) return null;
+  writePending(pending.filter((entry) => entry.id !== id));
+  auditAiExecution("approved", item);
+  return item;
+}
+
+export function rejectAiExecution(id: string, reason = "Rejected by operator"): boolean {
+  const pending = readPending();
+  const item = pending.find((entry) => entry.id === id);
+  if (!item) return false;
+  writePending(pending.filter((entry) => entry.id !== id));
+  auditAiExecution("rejected", item, reason);
   return true;
 }

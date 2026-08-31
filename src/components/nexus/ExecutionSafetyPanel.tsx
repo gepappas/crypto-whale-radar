@@ -3,7 +3,7 @@ import { AlertTriangle, Shield, Zap, RotateCcw, ChevronDown, ChevronUp } from "l
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getAiSafetyConfig, setAiSafetyConfig, DEFAULT_AI_SAFETY_CONFIG, type AiSafetyConfig } from "@/lib/nexus/aiSafety";
+import { getAiSafetyConfig, setAiSafetyConfig, DEFAULT_AI_SAFETY_CONFIG, getPendingAiIntents, approveAiExecution, rejectAiExecution, getAiExecutionAudit, type AiSafetyConfig, type PendingAiIntent } from "@/lib/nexus/aiSafety";
 import { Input } from "@/components/ui/input";
 import {
   getCircuitBreakerConfig,
@@ -29,6 +29,8 @@ export function ExecutionSafetyPanel() {
   const [cbState, setCbState] = useState(getCircuitBreakerState);
   const [dayPnl, setDayPnl] = useState(() => getDayPnlFraction());
   const [aiSafety, setAiSafety] = useState<AiSafetyConfig>(getAiSafetyConfig);
+  const [pending, setPending] = useState<PendingAiIntent[]>(getPendingAiIntents);
+  const [audit, setAudit] = useState(() => getAiExecutionAudit().slice(-5).reverse());
 
   const refresh = () => {
     setCircuit(getCircuitBreakerConfig());
@@ -36,6 +38,8 @@ export function ExecutionSafetyPanel() {
     setCbState(getCircuitBreakerState());
     setDayPnl(getDayPnlFraction());
     setAiSafety(getAiSafetyConfig());
+    setPending(getPendingAiIntents());
+    setAudit(getAiExecutionAudit().slice(-5).reverse());
   };
 
   useEffect(() => {
@@ -142,6 +146,21 @@ export function ExecutionSafetyPanel() {
               <div className="flex items-center gap-2 pb-1"><Toggle on={aiSafety.humanApprovalRequired} onChange={(humanApprovalRequired) => { const next = { ...aiSafety, humanApprovalRequired }; setAiSafetyConfig(next); setAiSafety(next); }} /><span className="text-[10px]">Human approval</span></div>
             </div>
             <p className="text-[10px] text-muted-foreground">AI intents are blocked by default, shadow mode never places orders, and live mode requires explicit approval.</p>
+            {pending.length > 0 && (
+              <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2 space-y-2">
+                <div className="font-medium text-amber-300">Pending human approvals ({pending.length})</div>
+                {pending.map((intent) => (
+                  <div key={intent.id} className="flex items-center justify-between gap-2 text-[10px]">
+                    <span className="truncate">{intent.source}{intent.pair ? ` · ${intent.pair}` : ""}{intent.quantity ? ` · $${intent.quantity}` : ""}</span>
+                    <span className="flex gap-1 shrink-0">
+                      <Button size="sm" className="h-6 text-[10px]" onClick={() => { approveAiExecution(intent.id); refresh(); }}>Approve</Button>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => { rejectAiExecution(intent.id); refresh(); }}>Reject</Button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="text-[10px] text-muted-foreground">Recent AI audit: {audit.length ? audit.map((event) => String(event.action)).join(" · ") : "none"}</div>
             <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setAiSafetyConfig(DEFAULT_AI_SAFETY_CONFIG); setAiSafety(DEFAULT_AI_SAFETY_CONFIG); }}><RotateCcw className="w-3 h-3 mr-1" /> Reset AI defaults</Button>
           </section>
 
