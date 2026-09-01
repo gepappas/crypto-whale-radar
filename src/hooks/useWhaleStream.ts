@@ -49,7 +49,27 @@ export function useWhaleStream({
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attemptRef = useRef(0);
   const subbedRef = useRef<Set<string>>(new Set());
+  const eventBufferRef = useRef<Array<{ type: 'whale'; trade: WhaleTrade } | { type: 'signal'; signal: StreamSignal }>>([]);
+  const rafRef = useRef<number | null>(null);
   const thrRef = useRef(whaleThr);
+
+  const flushBufferedEvents = useCallback(() => {
+    rafRef.current = null;
+    const batch = eventBufferRef.current.splice(0, 250);
+    for (const event of batch) {
+      if (event.type === 'whale') cbRef.current.onWhaleTrade(event.trade);
+      else cbRef.current.onSignal?.(event.signal);
+    }
+    if (eventBufferRef.current.length && typeof requestAnimationFrame !== 'undefined') {
+      rafRef.current = requestAnimationFrame(flushBufferedEvents);
+    }
+  }, []);
+
+  const bufferEvent = useCallback((event: { type: 'whale'; trade: WhaleTrade } | { type: 'signal'; signal: StreamSignal }) => {
+    eventBufferRef.current.push(event);
+    if (eventBufferRef.current.length > 1000) eventBufferRef.current.splice(0, eventBufferRef.current.length - 1000);
+    if (rafRef.current === null && typeof requestAnimationFrame !== 'undefined') rafRef.current = requestAnimationFrame(flushBufferedEvents);
+  }, [flushBufferedEvents]);
   const cbRef = useRef({ onWhaleTrade, onSignal });
   cbRef.current = { onWhaleTrade, onSignal };
   thrRef.current = whaleThr;
@@ -100,10 +120,10 @@ export function useWhaleStream({
         const msg = JSON.parse(e.data);
         switch (msg.type) {
           case 'whale':
-            if (msg.trade) cbRef.current.onWhaleTrade(msg.trade as WhaleTrade);
+            if (msg.trade) bufferEvent({ type: 'whale', trade: msg.trade as WhaleTrade });
             break;
           case 'signal':
-            cbRef.current.onSignal?.(msg as StreamSignal);
+            bufferEvent({ type: 'signal', signal: msg as StreamSignal });
             break;
           case 'status':
             if (msg.upstream === 'connected') setStatus('live');
@@ -122,7 +142,7 @@ export function useWhaleStream({
     };
 
     ws.onerror = () => { /* close handler will fire */ };
-  }, [enabled, send]);
+  }, [bufferEvent, enabled, send]);
 
   const scheduleReconnect = useCallback(() => {
     if (!enabled) return;
@@ -144,6 +164,9 @@ export function useWhaleStream({
     return () => {
       if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
       if (pingTimer.current) { clearInterval(pingTimer.current); pingTimer.current = null; }
+      eventBufferRef.current = [];
+      if (rafRef.current !== null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
       const ws = wsRef.current;
       wsRef.current = null;
       if (ws) { ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null; try { ws.close(); } catch (_) { /* already closed/closing */ } }
