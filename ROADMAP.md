@@ -16,6 +16,28 @@ The project prioritizes confidence over prediction and transition detection over
 
 ## P0 — Next priority
 
+### Enterprise data-layer hardening
+
+- **Planned:** RPC fallback manager with provider health scoring, latency thresholds above 500ms, rate-limit detection, and automatic failover.
+- **Planned:** Exponential WebSocket reconnection with capped backoff and jitter for Hyperliquid, Ethereum, and other exchange streams.
+- **Planned:** Bounded in-memory/FIFO transaction deduplication keyed by chain and transaction hash; evaluate Redis only when multi-process durability is required.
+- **Planned:** Smart wallet tagging and clustering for CEX hot/cold wallets, MEV/arbitrage bots, fresh wallets, and smart-money behavior.
+- **Planned:** Dynamic alert thresholds derived from token market cap and 24-hour volume.
+- **Planned:** Cross-chain bridge tracking for Arbitrum Bridge, LayerZero, Wormhole, and compatible bridge event signatures.
+
+### Enterprise frontend and real-time UX
+
+- **Planned:** Virtualize confirmed high-cardinality live-feed rows with `@tanstack/react-virtual`.
+- **Planned:** Decouple high-frequency stream state from the main render cycle using a focused external store/query cache while preserving the existing RAF buffering.
+- **Planned:** Optional Web Push and sound notifications with explicit permission, per-alert controls, and service-worker lifecycle handling.
+
+### MCP bot infrastructure and security
+
+- **Planned:** Queue and rate-limit Telegram, Discord, and X/Twitter notifications with retries, backpressure, and provider-specific quotas.
+- **Planned:** Keep private keys and provider credentials server-only; audit frontend bundles and route sensitive calls through backend/MCP proxies.
+- **Planned:** Add an authenticated `/health` endpoint exposing process and stream liveness for external monitoring.
+
+
 ### Performance and real-time stream optimization
 
 - **Completed:** RAF-buffered WebSocket delivery with bounded queues and teardown cleanup.
@@ -39,6 +61,15 @@ Expected capabilities:
 - Let the dashboard read persisted state rather than own the monitoring loop.
 
 This requires an architecture decision and Supabase deployment access.
+
+## Delivery sequence
+
+1. Stabilize data streams: RPC failover, WebSocket backoff, and transaction deduplication.
+2. Add analytics enrichment: wallet clusters, dynamic thresholds, and bridge tracking.
+3. Optimize the live UI: virtualization, decoupled state, and opt-in notifications.
+4. Harden the MCP bot: notification queues, secret-boundary checks, and health monitoring.
+
+All production changes should preserve dry-run defaults, avoid exposing secrets in frontend bundles, and include observable failure behavior.
 
 ## P1 — No remaining strategic gaps
 
