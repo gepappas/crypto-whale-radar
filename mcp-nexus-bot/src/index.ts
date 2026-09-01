@@ -38,13 +38,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const BASE_URL = process.env.NEXUS_BOT_API_URL;
-const TOKEN = process.env.NEXUS_BOT_API_TOKEN;
+const envSchema = z.object({
+  NEXUS_BOT_API_URL: z.string().url('must be a valid absolute URL'),
+  NEXUS_BOT_API_TOKEN: z.string().min(32, 'must be at least 32 characters'),
+});
 
-if (!BASE_URL || !TOKEN) {
-  console.error('[nexus-bot-mcp] NEXUS_BOT_API_URL and NEXUS_BOT_API_TOKEN must both be set. Exiting.');
+const parsedEnv = envSchema.safeParse({
+  NEXUS_BOT_API_URL: process.env.NEXUS_BOT_API_URL,
+  NEXUS_BOT_API_TOKEN: process.env.NEXUS_BOT_API_TOKEN,
+});
+
+if (!parsedEnv.success) {
+  console.error('[nexus-bot-mcp] Invalid environment configuration:', parsedEnv.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; '));
   process.exit(1);
 }
+
+const { NEXUS_BOT_API_URL: BASE_URL, NEXUS_BOT_API_TOKEN: TOKEN } = parsedEnv.data;
 
 async function call<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE_URL}/api/nexus-bot${path}`, {

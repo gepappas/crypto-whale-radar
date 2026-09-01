@@ -87,17 +87,28 @@ The frontend also consumes public market and blockchain sources, including Hyper
 ## Requirements
 
 - Node.js 18+ recommended
-- npm, Bun, or another compatible JavaScript package manager
+- Bun 1.3.8 (canonical package manager; workspace-aware)
 - PostgreSQL for persistence and API-backed features
 - Optional: Supabase CLI for edge functions and local Supabase development
 - Optional: Railway or another Node-compatible host for the Express API
 
 ## Getting started
 
-### 1. Install frontend dependencies
+### 1. Install dependencies
+
+Bun is the canonical package manager for the root project and the `mcp-nexus-bot` workspace:
 
 ```bash
-npm install
+bun install --frozen-lockfile
+bun run dev
+```
+
+For the MCP workspace:
+
+```bash
+bun --cwd mcp-nexus-bot run build
+```
+
 ```
 
 ### 2. Configure the frontend
