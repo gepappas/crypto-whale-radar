@@ -72,6 +72,8 @@ export function useWhaleWebSocket({
   const wsCircuitOpen = useRef(false);
   const wsCircuitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const httpAbortRef = useRef<AbortController | null>(null);
+  const eventBufferRef = useRef<Array<{ kind: 'trade'; trade: WhaleTrade } | { kind: 'price'; sym: string; price: number }>>([]);
+  const rafRef = useRef<number | null>(null);
   if (!httpAbortRef.current) httpAbortRef.current = new AbortController();
 
   const binanceReadyRef = useRef(false);
@@ -83,6 +85,21 @@ export function useWhaleWebSocket({
 
   const optionsRef = useRef({ subscribedPairs, bybitEnabled, binanceEnabled, whaleThr, whaleFeedEx, onWhaleTrade, onTrackerPrice });
   optionsRef.current = { subscribedPairs, bybitEnabled, binanceEnabled, whaleThr, whaleFeedEx, onWhaleTrade, onTrackerPrice };
+
+  const flushBufferedEvents = useCallback(() => {
+    rafRef.current = null;
+    const batch = eventBufferRef.current.splice(0, 300);
+    for (const event of batch) {
+      if (event.kind === 'trade') optionsRef.current.onWhaleTrade(event.trade);
+      else optionsRef.current.onTrackerPrice?.(event.sym, event.price);
+    }
+    if (eventBufferRef.current.length && typeof requestAnimationFrame !== 'undefined') rafRef.current = requestAnimationFrame(flushBufferedEvents);
+  }, []);
+  const bufferEvent = useCallback((event: { kind: 'trade'; trade: WhaleTrade } | { kind: 'price'; sym: string; price: number }) => {
+    eventBufferRef.current.push(event);
+    if (eventBufferRef.current.length > 1200) eventBufferRef.current.splice(0, eventBufferRef.current.length - 1200);
+    if (rafRef.current === null && typeof requestAnimationFrame !== 'undefined') rafRef.current = requestAnimationFrame(flushBufferedEvents);
+  }, [flushBufferedEvents]);
 
   const seedFromHttp = useCallback(async () => {
     try {
@@ -161,7 +178,7 @@ export function useWhaleWebSocket({
           const sym = symbol.replace(/USDT$/, '');
           const cls = usdt >= 5e6 ? 'ws-mega' : usdt >= 1e6 ? 'ws-big' : 'ws-mid';
           const trade: WhaleTrade = { ts: Date.now(), sym, side: t.sell ? 'SELL' : 'BUY', price: t.price, qty: t.qty, usdt, cls, ex: exchange as 'binance' };
-          optionsRef.current.onWhaleTrade(trade);
+          bufferEvent({ kind: 'trade', trade });
         });
       } catch (err) {
         const isAbort = (err as DOMException)?.name === 'AbortError';
@@ -312,12 +329,12 @@ export function useWhaleWebSocket({
           const price = parseFloat(d.p), qty = parseFloat(d.q), usdt = price * qty;
           const side = d.m ? 'SELL' : 'BUY';
           const sym  = (d.s || '').replace(/USDT$/, '');
-          optionsRef.current.onTrackerPrice?.(sym, price);
+          bufferEvent({ kind: 'price', sym, price });
           if (usdt < optionsRef.current.whaleThr) return;
           const cls = usdt >= 5e6 ? 'ws-mega' : usdt >= 1e6 ? 'ws-big' : 'ws-mid';
           const trade: WhaleTrade = { ts: Date.now(), sym, side, price, qty, usdt, cls, ex: 'binance' };
           if (optionsRef.current.whaleFeedEx === 'all' || optionsRef.current.whaleFeedEx === 'binance')
-            optionsRef.current.onWhaleTrade(trade);
+            bufferEvent({ kind: 'trade', trade });
         } catch (_) { /* malformed message, drop it */ }
       });
     };
@@ -386,12 +403,12 @@ export function useWhaleWebSocket({
           trades.forEach((t: Record<string, string>) => {
             const price = parseFloat(t.p), qty = parseFloat(t.v), usdt = price * qty;
             const side = t.S === 'Buy' ? 'BUY' : 'SELL';
-            optionsRef.current.onTrackerPrice?.(sym, price);
+            bufferEvent({ kind: 'price', sym, price });
             if (usdt < optionsRef.current.whaleThr) return;
             const cls = usdt >= 5e6 ? 'ws-mega' : usdt >= 1e6 ? 'ws-big' : 'ws-mid';
             const trade: WhaleTrade = { ts: Date.now(), sym, side, price, qty, usdt, cls, ex: 'bybit' };
             if (optionsRef.current.whaleFeedEx === 'all' || optionsRef.current.whaleFeedEx === 'bybit')
-              optionsRef.current.onWhaleTrade(trade);
+              bufferEvent({ kind: 'trade', trade });
           });
         } catch (_) { /* malformed message, drop it */ }
       });
@@ -461,6 +478,9 @@ export function useWhaleWebSocket({
       if (wsRebuildTimer.current) clearTimeout(wsRebuildTimer.current);
       if (wsCircuitTimer.current) clearTimeout(wsCircuitTimer.current);
       stopFallbackPollingRef.current();
+      eventBufferRef.current = [];
+      if (rafRef.current !== null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
       try { httpAbortRef.current?.abort(); } catch { /* already aborted/settled */ }
       httpAbortRef.current = new AbortController();
     };
