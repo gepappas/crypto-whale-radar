@@ -6,7 +6,21 @@ Crypto Whale Radar is being developed as a personal 24/7 crypto early-warning sy
 
 The project prioritizes confidence over prediction and transition detection over price-target calling. The primary output is a clear market read such as: "independent signals agree and the regime moved from NEUTRAL to EARLY BULL."
 
+## Completed repository hardening
+
+- Bun 1.3.8 is the canonical package manager with a synchronized `bun.lock`.
+- Root workspaces now include `mcp-nexus-bot`.
+- Added strict package-manager policy and ignored local AI/session artifacts.
+- Added Zod validation for public Supabase configuration and MCP bridge environment variables.
+- Added GitHub Actions coverage for frontend checks, Playwright, and MCP compilation.
+
 ## P0 — Next priority
+
+### Performance and real-time stream optimization
+
+- **Completed:** RAF-buffered WebSocket delivery with bounded queues and teardown cleanup.
+- **Next:** Add virtualization only to confirmed high-cardinality whale/order-flow row containers.
+- **Next:** Move pure whale swarm and signal-outcome calculations into a typed Web Worker with a synchronous fallback.
 
 ### Durable regime monitoring and reconciliation
 

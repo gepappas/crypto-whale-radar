@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
+import { getPublicEnv } from '@/lib/env';
 
 // IMPORTANT: createClient() throws synchronously if the URL/key are missing.
 // That throw happens at MODULE IMPORT TIME (before React ever mounts), so a
@@ -11,12 +12,10 @@ import { brokeredPreviewStorage } from './previewAuthStorage';
 // the client always constructs; callers already handle `error` from every
 // call, so misconfiguration degrades to "Supabase features disabled"
 // instead of a blank page.
-const SUPABASE_URL =
-  (import.meta.env.VITE_SUPABASE_URL as string | undefined) || 'https://placeholder.supabase.co';
+const publicEnv = getPublicEnv(import.meta.env as Record<string, unknown>);
+const SUPABASE_URL = publicEnv.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
-  'placeholder-anon-key';
+  publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY || publicEnv.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
 if (
   !import.meta.env.VITE_SUPABASE_URL ||
