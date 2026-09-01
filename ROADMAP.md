@@ -8,6 +8,10 @@ The project prioritizes confidence over prediction and transition detection over
 
 ## P0 — Next priority
 
+### Durable regime monitoring and reconciliation
+
+Move the remaining browser-owned monitoring and execution-adjacent state toward durable server-side services. The first milestone is the 24/7 regime engine; the second is durable trade-ledger reconciliation so bot restarts and closed browser tabs cannot lose operational state.
+
 ### Server-side 24/7 regime engine
 
 Move regime monitoring out of browser-only React state into a server-side or scheduled architecture that continues working when all browser tabs are closed.
@@ -40,14 +44,17 @@ The previously identified strategic items are shipped, including:
 - Expand the homepage beyond the current regime-panel placement.
 - Continue improving optional execution features without making them the core product.
 
-## Optional AI-safety candidates
+## Shipped AI safety controls
 
-These are real candidates if AI-to-execution wiring is expanded later. They are not required for the current human-led early-warning direction:
+The AI-to-execution boundary now has a fail-closed safety layer:
 
 - Tri-state AI trading mode: `disabled`, `shadow`, and `live`.
 - Human approval queue for AI-initiated trades.
-- Audit log for every AI and MCP tool call, including rejected calls.
-- AI-specific risk caps separate from general Nexus protections.
+- Append-only local audit events for requested, approved, rejected, blocked, and executed intents.
+- AI-specific notional caps and per-pair cooldown enforcement.
+- Guarded AI arbitrage entry point integrated with existing Nexus protections.
+
+These controls remain local/browser-scoped for now; durable server-side audit and approval state belongs to the P0 architecture work.
 
 ## Execution features
 
