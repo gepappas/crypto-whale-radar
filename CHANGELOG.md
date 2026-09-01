@@ -6,6 +6,8 @@ The project follows a practical, source-based changelog: entries describe change
 
 ## Unreleased
 
+- Added RAF-buffered, frame-paced delivery for whale WebSocket and stream callbacks, with bounded queues and teardown cleanup.
+- Completed the first Phase 1 performance milestone; feed virtualization and Web Worker signal calculations remain planned after measuring the actual high-cardinality render paths.
 - Added AI execution safety controls with disabled, shadow, and live modes, fail-closed defaults, and normalized risk settings.
 - Added a human approval queue for AI execution intents with approve/reject actions and recent audit visibility.
 - Added AI-specific notional caps, per-pair cooldown enforcement, and requested/approved/rejected/blocked/executed audit events.

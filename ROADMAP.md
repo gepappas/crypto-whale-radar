@@ -8,6 +8,12 @@ The project prioritizes confidence over prediction and transition detection over
 
 ## P0 — Next priority
 
+### Performance and real-time stream optimization
+
+- **Completed:** RAF-buffered WebSocket delivery with bounded queues and teardown cleanup.
+- **Next:** Add virtualization only to confirmed high-cardinality whale/order-flow row containers.
+- **Next:** Move pure whale swarm and signal-outcome calculations into a typed Web Worker with a synchronous fallback.
+
 ### Durable regime monitoring and reconciliation
 
 Move the remaining browser-owned monitoring and execution-adjacent state toward durable server-side services. The first milestone is the 24/7 regime engine; the second is durable trade-ledger reconciliation so bot restarts and closed browser tabs cannot lose operational state.
