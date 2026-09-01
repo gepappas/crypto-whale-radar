@@ -11,6 +11,7 @@ import { checkDailyRiskGate } from "./dailyRiskGate";
 import { recordBotTrade, type BotStrategy } from "./botTradeStore";
 import { checkPairQuality } from "./pairQuality";
 import { checkOpenTradeSlot, type SlotCheckResult } from "./openTradesLimit";
+import { requestAiExecution, markAiExecutionExecuted, type AiExecutionIntent } from "./aiSafety";
 import type { Exchange } from "./exchanges";
 
 const NEXUS_TRACKED_EXCHANGES = new Set(["hyperliquid", "backpack", "binance", "okx"]);
@@ -200,6 +201,22 @@ export async function executeArbitrageGuarded(
     return { ok: true, dryRun: true };
   }
   return bot.executeArbitrage(opp);
+}
+
+/** AI-only entry point: applies the AI mode, cap, cooldown, and approval queue
+ * before entering the existing Nexus protection chain. Manual execution paths
+ * remain unchanged. */
+export async function executeAiArbitrageGuarded(
+  opp: ArbitrageOpportunity,
+  intent: AiExecutionIntent,
+): Promise<{ ok: boolean; txHash?: string; error?: string; dryRun?: boolean; intentId?: string }> {
+  const decision = requestAiExecution({ ...intent, pair: intent.pair ?? opp.pair });
+  if (!decision.allowed) {
+    return { ok: false, error: decision.reason, intentId: decision.intentId };
+  }
+  const result = await executeArbitrageGuarded(opp);
+  if (result.ok && !result.dryRun) markAiExecutionExecuted({ ...intent, pair: intent.pair ?? opp.pair });
+  return result;
 }
 
 export async function createGridGuarded(cfg: GridConfig): Promise<GridStatus> {
