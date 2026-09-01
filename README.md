@@ -35,6 +35,7 @@ The latest changes are documented in [`CHANGELOG.md`](./CHANGELOG.md). This keep
 - Optional CCXT execution bridge and Freqtrade strategy bridge
 - MCP server for operating Nexus through Claude Desktop, Claude Code, or another MCP client
 - Defensive execution controls: bearer authentication, dry-run defaults, cooldowns, sizing limits, and live-trading confirmation gates
+- AI execution safety: disabled/shadow/live modes, human approval queue, risk caps, cooldowns, and local audit history
 
 ## Architecture
 
@@ -301,6 +302,10 @@ For the optional Supabase cache and edge-function setup, see [`HYPERLIQUID_DEPLO
 | `npm run preview` | Preview the production frontend build |
 | `npm run db:migrate` | Apply `server/schema.sql` using `DATABASE_URL` |
 | `npm run fill-prices` | Request signal outcome price filling locally |
+
+## AI execution safety
+
+AI-initiated execution is separated from the intelligence dashboard and defaults to `disabled`. The Nexus safety panel supports `disabled`, `shadow`, and `live` modes, with live intents gated by human approval, AI-specific notional caps, per-pair cooldowns, and an append-only local audit trail. These controls do not place trades during normal verification; keep both AI and exchange execution in dry-run mode until the full deployment is independently reviewed.
 
 ## Nexus MCP server
 

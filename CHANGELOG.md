@@ -6,6 +6,11 @@ The project follows a practical, source-based changelog: entries describe change
 
 ## Unreleased
 
+- Added AI execution safety controls with disabled, shadow, and live modes, fail-closed defaults, and normalized risk settings.
+- Added a human approval queue for AI execution intents with approve/reject actions and recent audit visibility.
+- Added AI-specific notional caps, per-pair cooldown enforcement, and requested/approved/rejected/blocked/executed audit events.
+- Integrated an AI arbitrage entry point with the existing Nexus protection chain while preserving manual execution paths.
+- Documented the next architecture milestone: durable server-side regime monitoring and trade-ledger reconciliation.
 - Documentation reorganized from the prototype repository format.
 - Main project guide refreshed for the upgraded `crypto-whale-radar` repository.
 - Roadmap and release history split into [`ROADMAP.md`](./ROADMAP.md) and this file.
