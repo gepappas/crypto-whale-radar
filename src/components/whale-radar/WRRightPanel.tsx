@@ -7,6 +7,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { AlertItem, WhaleTrade, WalletEntry, fmtN } from '@/lib/whaleRadarState';
 import { rankWalletsBySkill } from '@/lib/walletSkillScoring';
+import { inferWalletTag, WALLET_TAG_LABELS } from '@/lib/walletTagging';
 import { HLExplorer } from '@/components/hyperliquid/HLExplorer';
 import { WRHistoryPanel } from '@/components/whale-radar/WRHistoryPanel';
 import type { LockInfo } from '@/lib/alertCooldown';
@@ -305,7 +306,12 @@ export function WRRightPanel({
                 <div key={w.address} className="px-3 py-2 border-b border-wr-border/40 flex items-center gap-2 animate-slide-in">
                   <div className={`wr-dot wr-dot-sol ${w.recentTxCount24h ? 'animate-pulse' : ''}`} title={w.recentTxCount24h ? `${w.recentTxCount24h} tx in last 24h` : 'no recent activity'} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[9px] text-wr-white truncate">{w.label}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-[9px] text-wr-white truncate">{w.label}</div>
+                      <span className="text-[6px] text-wr-cyan border border-wr-cyan/30 px-1 tracking-wider shrink-0">
+                        {WALLET_TAG_LABELS[w.walletTag ?? inferWalletTag(w)]}
+                      </span>
+                    </div>
                     <div className="text-[7px] text-wr-muted truncate">{w.address}</div>
                     <div className="text-[7px] text-wr-cyan flex items-center gap-2 mt-0.5 flex-wrap">
                       {w.balanceSol != null ? <span>{w.balanceSol.toFixed(3)} SOL</span> : <span className="text-wr-muted">loading…</span>}
