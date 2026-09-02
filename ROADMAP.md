@@ -19,8 +19,9 @@ The project prioritizes confidence over prediction and transition detection over
 ### Enterprise data-layer hardening
 
 - **Planned:** RPC fallback manager with provider health scoring, latency thresholds above 500ms, rate-limit detection, and automatic failover.
-- **Planned:** Exponential WebSocket reconnection with capped backoff and jitter for Hyperliquid, Ethereum, and other exchange streams.
-- **Planned:** Bounded in-memory/FIFO transaction deduplication keyed by chain and transaction hash; evaluate Redis only when multi-process durability is required.
+- **Completed:** Generic exchange WebSocket reconnection now uses capped exponential backoff with jitter.
+- **Completed:** Generic exchange-feed trades use bounded in-memory deduplication; chain-native transaction-hash dedupe remains planned for server-side feeds.
+- **Existing:** The primary whale WebSocket hook already has capped backoff, jitter, fallback polling, and circuit-breaker behavior.
 - **Planned:** Smart wallet tagging and clustering for CEX hot/cold wallets, MEV/arbitrage bots, fresh wallets, and smart-money behavior.
 - **Planned:** Dynamic alert thresholds derived from token market cap and 24-hour volume.
 - **Planned:** Cross-chain bridge tracking for Arbitrum Bridge, LayerZero, Wormhole, and compatible bridge event signatures.

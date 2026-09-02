@@ -32,7 +32,13 @@ export interface UseExchangeFeedResult {
   reconnectAttempts: number;
 }
 
+const BACKOFF_BASE_MS = 500;
 const MAX_BACKOFF_MS = 30_000;
+
+function backoffWithJitter(attempt: number): number {
+  const exponential = Math.min(MAX_BACKOFF_MS, BACKOFF_BASE_MS * 2 ** Math.min(attempt, 8));
+  return Math.round(exponential * (0.7 + Math.random() * 0.6));
+}
 
 export function useExchangeFeed({
   adapter, pairs, minUsd, enabled, onTrade,
@@ -43,6 +49,7 @@ export function useExchangeFeed({
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attemptsRef = useRef(0);
+  const recentTradeKeysRef = useRef(new Map<string, number>());
 
   // Stable refs so a trade-handler identity change or minUsd tweak doesn't force a reconnect.
   const onTradeRef = useRef(onTrade);
@@ -102,7 +109,17 @@ export function useExchangeFeed({
 
       ws.onmessage = (e) => {
         const trade = adapter.parseMessage(typeof e.data === 'string' ? e.data : '', minUsdRef.current);
-        if (trade) onTradeRef.current(trade);
+        if (trade) {
+          const key = `${adapter.id}:${trade.sym}:${trade.ts}:${trade.price}:${trade.qty}`;
+          const now = Date.now();
+          for (const [seenKey, seenAt] of recentTradeKeysRef.current) {
+            if (now - seenAt > 60_000) recentTradeKeysRef.current.delete(seenKey);
+          }
+          if (!recentTradeKeysRef.current.has(key)) {
+            recentTradeKeysRef.current.set(key, now);
+            onTradeRef.current(trade);
+          }
+        }
       };
 
       ws.onerror = () => {
@@ -114,7 +131,7 @@ export function useExchangeFeed({
         attemptsRef.current += 1;
         setReconnectAttempts(attemptsRef.current);
         setStatus('reconnecting');
-        const delay = Math.min(MAX_BACKOFF_MS, 1000 * 2 ** Math.min(attemptsRef.current, 5));
+        const delay = backoffWithJitter(attemptsRef.current);
         timerRef.current = setTimeout(connect, delay);
       };
     }
