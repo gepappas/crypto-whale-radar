@@ -38,7 +38,7 @@ The project prioritizes confidence over prediction and transition detection over
 
 - **Planned:** Queue and rate-limit Telegram, Discord, and X/Twitter notifications with retries, backpressure, and provider-specific quotas.
 - **Planned:** Keep private keys and provider credentials server-only; audit frontend bundles and route sensitive calls through backend/MCP proxies.
-- **Planned:** Add an authenticated `/health` endpoint exposing process and stream liveness for external monitoring.
+- **Completed:** `/api/health` now reports Nexus worker liveness, last tick timestamps, stale state, and recent errors with a 503 degraded response for external monitoring.
 
 
 ### Performance and real-time stream optimization

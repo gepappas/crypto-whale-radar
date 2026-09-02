@@ -15,7 +15,7 @@ import { whalesRouter }         from './routes/whales';
 import { signalOutcomesRouter, fillOutcomePrices } from './routes/signalOutcomes';
 import { nexusBotRouter } from './routes/nexusBot';
 import { pushRouter } from './routes/push';
-import { startNexusBotWorker } from './services/nexusBotWorker';
+import { getNexusBotWorkerHealth, startNexusBotWorker } from './services/nexusBotWorker';
 
 const app = express();
 const PORT = Number(process.env.API_PORT) || 3001;
@@ -79,7 +79,14 @@ app.use('/api', (req, res, next) => {
 
 // ── Health ─────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime(), timestamp: Date.now() });
+  const worker = getNexusBotWorkerHealth();
+  const status = worker.stale || Boolean(worker.lastTickError) ? 'degraded' : 'ok';
+  res.status(status === 'ok' ? 200 : 503).json({
+    status,
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    worker,
+  });
 });
 
 app.get('/api/health/db', async (_req, res) => {
