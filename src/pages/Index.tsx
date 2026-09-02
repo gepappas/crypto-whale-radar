@@ -44,6 +44,7 @@ import type { CouncilLlmSettings } from '@/lib/council/api';
 import type { WsStatus } from '@/hooks/useWhaleWebSocket';
 import { HLConfigBanner } from '@/components/hyperliquid/HLConfigBanner';
 import { analyzeSentiment } from '@/lib/analyzeToken';
+import { getCoinAlertThresholds } from '@/lib/dynamicAlertThresholds';
 
 // Scan engine, signal computation and CG fetching live in:
 //   - @/hooks/useMarketData  (state + orchestration)
@@ -501,7 +502,12 @@ export default function WhaleRadarApp() {
 
   // ══ FILTERED COINS ════════════════════════════════════════════════════════
   const filteredCoins = coins.filter(c => {
-    if (c.vmcap < vmcapThr && Math.abs(c.change) < pchgThr && c.score < 20) return false;
+    const thresholds = getCoinAlertThresholds(c, {
+      volumeToMcapPct: vmcapThr,
+      priceChangePct: pchgThr,
+      whaleNotionalUsd: whaleThr,
+    });
+    if (c.vmcap < thresholds.volumeToMcapPct && Math.abs(c.change) < thresholds.priceChangePct && c.score < 20) return false;
     if (watchlistOnly && !tracked[c.symbol]) return false;
     if (advancedFilters.chain === 'solana' && !c.isSol) return false;
     if (['ethereum', 'bsc', 'polygon'].includes(advancedFilters.chain) && c.isSol) return false;
@@ -509,7 +515,7 @@ export default function WhaleRadarApp() {
     return true;
   });
 
-  // ══ FILTERED ALERTS ═══════════════════════════════════════════════════════
+  // ══ FILTERED ALERTS ════���══════════════════════════════════════════════════
   const filteredAlerts = alerts.filter(a => {
     if (alertFilter === 'PIN') return a.pinned;
     if (alertFilter !== 'ALL' && a.tc !== alertFilter) return false;
