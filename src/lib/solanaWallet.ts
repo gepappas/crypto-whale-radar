@@ -16,9 +16,9 @@
  *  with a body — that shared helper is GET-only.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+import { rpcFallback } from './rpcFallbackManager';
+
 const CACHE_TTL_MS = 30_000;
-const FETCH_TIMEOUT_MS = 10_000;
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 export interface WalletActivity {
@@ -38,23 +38,7 @@ export interface RpcSignatureEntry {
 /** Exported so walletSkillScoring.ts can reuse the same timeout/error
  *  handling instead of re-deriving its own RPC client. */
 export async function solanaRpcCall<T>(method: string, params: unknown[]): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(SOLANA_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`Solana RPC HTTP ${res.status}`);
-    const json = await res.json() as { result?: T; error?: { message?: string } };
-    if (json.error) throw new Error(json.error.message ?? 'Solana RPC error');
-    if (json.result === undefined) throw new Error('Solana RPC returned no result');
-    return json.result;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return rpcFallback.request<T>(method, params);
 }
 
 /**
