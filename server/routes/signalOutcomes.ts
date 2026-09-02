@@ -218,7 +218,7 @@ export async function fillOutcomePrices(): Promise<FillResult> {
   // Bug #3 fixed: was using CoinCap (coincap.io) which has different slug IDs
   // (e.g. "bonk-coin" vs CoinGecko's "bonk"). coin_id is populated from CoinGecko
   // scan data, so we must fetch prices from CoinGecko to match.
-  let prices: Record<string, number> = {};
+  const prices: Record<string, number> = {};
   try {
     // CoinGecko simple/price — batched, up to 250 IDs, no key needed on free tier
     const batches: string[][] = [];
