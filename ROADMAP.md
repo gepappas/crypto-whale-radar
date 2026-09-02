@@ -26,7 +26,7 @@ The project prioritizes confidence over prediction and transition detection over
 - **Planned:** Replace heuristic tags with server-backed address intelligence and clustering, including cross-chain bridge attribution.
 - **Completed:** Dynamic scanner thresholds now adapt volume-to-market-cap and price-change sensitivity using each token's market cap and 24-hour volume, while retaining user-configured baseline controls.
 - **Planned:** Extend adaptive thresholds to server-side alert dispatch and exchange subscription notional filters.
-- **Planned:** Cross-chain bridge tracking for Arbitrum Bridge, LayerZero, Wormhole, and compatible bridge event signatures.
+- **In progress:** Bridge attribution utility recognizes Arbitrum Bridge, LayerZero, and Wormhole labels with inbound/outbound direction hints; chain event ingestion and verified contract registries remain planned.
 
 ### Enterprise frontend and real-time UX
 
