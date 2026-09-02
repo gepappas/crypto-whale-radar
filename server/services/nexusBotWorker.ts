@@ -16,6 +16,20 @@ import { matchFillsFifo, type Fill } from './gridPnl';
 
 const POLL_MS = Number(process.env.NEXUS_GRID_POLL_MS || 30_000);
 let timer: ReturnType<typeof setInterval> | null = null;
+let lastTickStartedAt = 0;
+let lastTickCompletedAt = 0;
+let lastTickError: string | null = null;
+
+export function getNexusBotWorkerHealth() {
+  return {
+    running: timer !== null,
+    pollMs: POLL_MS,
+    lastTickStartedAt,
+    lastTickCompletedAt,
+    lastTickError,
+    stale: timer !== null && lastTickCompletedAt > 0 && Date.now() - lastTickCompletedAt > POLL_MS * 3,
+  };
+}
 
 // ── Grid maintenance ──────────────────────────────────────────────────────────
 
@@ -138,8 +152,16 @@ async function volumeMakerTick(): Promise<void> {
 // ── Driver ──────────────────────────────────────────────────────────────────
 
 async function tick(): Promise<void> {
-  await gridTick();
-  await volumeMakerTick();
+  lastTickStartedAt = Date.now();
+  lastTickError = null;
+  try {
+    await gridTick();
+    await volumeMakerTick();
+    lastTickCompletedAt = Date.now();
+  } catch (err) {
+    lastTickError = (err as Error).message;
+    console.error('[nexusBotWorker] tick failed', lastTickError);
+  }
 }
 
 export function startNexusBotWorker(): void {
