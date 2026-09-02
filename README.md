@@ -26,6 +26,7 @@ The latest changes are documented in [`CHANGELOG.md`](./CHANGELOG.md). This keep
 
 - Whale Radar scanner for manipulation candidates and threat scoring
 - Live whale activity and exchange order-flow views with frame-paced RAF buffering for bursty streams
+- Wallet tracker with heuristic CEX, MEV/bot, fresh-wallet, and smart-money tags
 - Trading Hub with technical analysis, screening, sentiment, timeframes, patterns, and backtesting
 - Hyperliquid explorer, wallet tracking, block and transaction views, and opportunity panels
 - Nexus terminal for whale watch, arbitrage, grid strategies, volume making, portfolio views, and the Crystal Ball signal engine

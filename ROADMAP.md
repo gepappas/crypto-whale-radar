@@ -18,11 +18,12 @@ The project prioritizes confidence over prediction and transition detection over
 
 ### Enterprise data-layer hardening
 
-- **Planned:** RPC fallback manager with provider health scoring, latency thresholds above 500ms, rate-limit detection, and automatic failover.
+- **Completed:** Solana RPC fallback manager with provider health scoring, 500ms latency threshold, rate-limit/error detection, bounded cooldowns, and automatic failover via `VITE_SOLANA_RPC_URLS`.
 - **Completed:** Generic exchange WebSocket reconnection now uses capped exponential backoff with jitter.
 - **Completed:** Generic exchange-feed trades use bounded in-memory deduplication; chain-native transaction-hash dedupe remains planned for server-side feeds.
 - **Existing:** The primary whale WebSocket hook already has capped backoff, jitter, fallback polling, and circuit-breaker behavior.
-- **Planned:** Smart wallet tagging and clustering for CEX hot/cold wallets, MEV/arbitrage bots, fresh wallets, and smart-money behavior.
+- **Completed:** Initial wallet tagging for CEX labels, MEV/arbitrage bots, fresh wallets, and skill-scored smart money; tags are surfaced in the wallet tracker.
+- **Planned:** Replace heuristic tags with server-backed address intelligence and clustering, including cross-chain bridge attribution.
 - **Planned:** Dynamic alert thresholds derived from token market cap and 24-hour volume.
 - **Planned:** Cross-chain bridge tracking for Arbitrum Bridge, LayerZero, Wormhole, and compatible bridge event signatures.
 

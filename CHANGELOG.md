@@ -6,6 +6,8 @@ The project follows a practical, source-based changelog: entries describe change
 
 ## Unreleased
 
+- Added wallet classification tags for CEX wallets, MEV/arbitrage bots, fresh wallets, and skill-scored smart money.
+- Surfaced wallet categories in the Whale Radar wallet tracker while retaining heuristic labels until server-backed intelligence is available.
 - Standardized the repository on Bun 1.3.8, removed npm lockfile drift, and added the `mcp-nexus-bot` workspace.
 - Added strict package-manager and local AI/session ignore policies.
 - Added Zod validation for public Supabase configuration and MCP bridge environment variables without logging secrets.

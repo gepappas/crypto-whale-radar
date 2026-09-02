@@ -153,6 +153,8 @@ export interface WalletEntry {
   winRate?: number;
   avgProfitSol?: number;
   closedTrades?: number;
+  /** Inferred category used to separate exchange, bot, fresh, and skilled wallets. */
+  walletTag?: 'CEX' | 'MEV' | 'SMART_MONEY' | 'FRESH' | 'TRACKED';
 }
 
 export interface ScanSnapshot {
