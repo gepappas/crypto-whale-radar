@@ -182,7 +182,7 @@ export async function fillAlertOutcomePrices(): Promise<AlertFillResult> {
   if (!need.length) return { filled: 0 };
 
   const coinIds = [...new Set(need.map((r) => r.coin_id))];
-  let prices: Record<string, number> = {};
+  const prices: Record<string, number> = {};
   try {
     const batches: string[][] = [];
     for (let i = 0; i < coinIds.length; i += 250) batches.push(coinIds.slice(i, i + 250));
