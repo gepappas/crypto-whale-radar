@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AGENT_META, DEPTH_AGENTS, type AgentId, type CouncilDecision, type CouncilDepth, type CouncilMemoryEntry } from '@/types/council';
 import type { CoinData, WhaleTrade } from '@/lib/whaleRadarState';
 import { buildCouncilContext } from '@/lib/council/context';
+import { buildAnalystState } from '@/lib/council/analystState';
 import type { RegimeReading } from '@/lib/regime/types';
 import {
   buildReflection,
@@ -143,6 +144,7 @@ export function WRCouncilPanel({ coin, whaleTrades, regime, llm, onClose, autoRu
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const verdictCls = decision ? VERDICT_CLS[decision.finalVerdict] ?? VERDICT_CLS.NEUTRAL : '';
+  const analystState = useMemo(() => buildAnalystState(coin, whaleTrades, regime), [coin, whaleTrades, regime]);
 
   return (
     <div
@@ -198,6 +200,25 @@ export function WRCouncilPanel({ coin, whaleTrades, regime, llm, onClose, autoRu
 
         {/* Body */}
         <div ref={logRef} className="p-4 overflow-y-auto flex-1 scrollbar-thin space-y-3">
+          <div className="border border-wr-purple/40 bg-wr-purple/5 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[8px] text-wr-purple tracking-[2px]">PHASE 1 · SHARED ANALYST STATE</div>
+              <span className="text-[8px] text-wr-cyan tracking-widest">{analystState.consensus.toUpperCase()} · {analystState.confidence}%</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {analystState.reports.map((report) => (
+                <div key={report.analyst} className="border border-wr-border/70 bg-wr-bg px-2 py-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[8px] text-wr-white tracking-wider">{report.label}</span>
+                    <span className={`text-[8px] ${report.bias === 'bullish' ? 'text-wr-green' : report.bias === 'bearish' ? 'text-wr-red' : 'text-wr-muted'}`}>{report.bias.toUpperCase()} {report.confidence}%</span>
+                  </div>
+                  <div className="text-[9px] text-wr-muted mt-1 leading-relaxed">{report.thesis}</div>
+                  {report.riskFlags.length > 0 && <div className="text-[8px] text-wr-amber mt-1">RISK: {report.riskFlags.join(' · ')}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {showMemory && (
             <div className="border border-wr-border bg-wr-bg3 p-3">
               <div className="text-[8px] text-wr-amber tracking-[2px] mb-2">PAST COUNCILS · {coin.symbol}</div>
