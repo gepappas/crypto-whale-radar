@@ -76,6 +76,8 @@ export function WRCouncilPanel({ coin, whaleTrades, regime, llm, onClose, autoRu
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const startedAt = new Date().toISOString();
 
     const ctx = buildCouncilContext(coin, { whaleTrades, regime });
     const mem = await loadCouncilMemory(coin.symbol);
@@ -120,7 +122,14 @@ export function WRCouncilPanel({ coin, whaleTrades, regime, llm, onClose, autoRu
         },
         onDecision: (d) => {
           setDecision(d);
-          saveCouncilDecision(d, ctx, transcript, depth, reflection).then((id) => {
+          saveCouncilDecision(d, ctx, transcript, depth, reflection, {
+            runId,
+            startedAt,
+            completedAt: new Date().toISOString(),
+            status: 'completed',
+            analystSnapshotAt: ctx.marketState?.generatedAt,
+            agentCount: DEPTH_AGENTS[depth].length,
+          }).then((id) => {
             if (id) loadCouncilMemory(coin.symbol).then(setMemory);
           });
         },
