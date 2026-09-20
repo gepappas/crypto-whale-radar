@@ -78,6 +78,27 @@ export interface AgentMessage {
 }
 
 /** Everything injected into every agent prompt. */
+export type AnalystId = 'technical' | 'flow' | 'sentiment' | 'fundamentals';
+
+export interface AnalystReport {
+  analyst: AnalystId;
+  label: string;
+  thesis: string;
+  evidence: string[];
+  confidence: number;
+  bias: 'bullish' | 'bearish' | 'neutral';
+  riskFlags: string[];
+}
+
+/** Shared, structured intelligence snapshot passed to every council agent. */
+export interface AgentMarketState {
+  generatedAt: string;
+  symbol: string;
+  reports: AnalystReport[];
+  consensus: 'bullish' | 'bearish' | 'mixed' | 'neutral';
+  confidence: number;
+}
+
 export interface CouncilContext {
   symbol: string;
   tokenId?: string;
@@ -106,6 +127,8 @@ export interface CouncilContext {
   hyperliquid?: { fundingRate?: number; openInterest?: number; markPrice?: number } | null;
   recentWhaleTrades: { sym: string; side: string; usdt: number; ex: string; ts: number }[];
   isSol?: boolean;
+  /** One structured snapshot shared by every council agent. */
+  marketState?: AgentMarketState;
   /** Market-wide regime read from the Regime Engine (P0), if available.
    *  Distinct from per-token whale/manipulation signals above — this is
    *  what the REGIME DESK agent reads to answer "what regime are we in /

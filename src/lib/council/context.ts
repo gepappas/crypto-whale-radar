@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 import type { CoinData, WhaleTrade } from '@/lib/whaleRadarState';
 import type { CouncilContext } from '@/types/council';
+import { buildAnalystState } from '@/lib/council/analystState';
 import type { RegimeReading } from '@/lib/regime/types';
 import { getCeoSignalLabel } from '@/services/signals';
 
@@ -66,6 +67,7 @@ export function buildCouncilContext(
     hyperliquid: opts.hyperliquid ?? null,
     recentWhaleTrades: trades,
     isSol: coin.isSol,
+    marketState: buildAnalystState(coin, whaleTrades, opts.regime),
     regime: opts.regime
       ? {
           score: opts.regime.score,
