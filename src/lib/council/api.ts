@@ -10,6 +10,7 @@ import type {
   CouncilMemoryEntry,
   CouncilStreamEvent,
   DeskTrackRecord,
+  CouncilRunAudit,
 } from '@/types/council';
 
 const SUPABASE_URL =
@@ -124,6 +125,7 @@ export async function saveCouncilDecision(
   transcript: { agent: AgentId; text: string }[],
   depth: CouncilDepth,
   reflection: string | null,
+  audit?: CouncilRunAudit,
 ): Promise<string | null> {
   try {
     // Writes go through the council-persist edge function (service role).
@@ -142,6 +144,7 @@ export async function saveCouncilDecision(
           transcript: JSON.parse(JSON.stringify(transcript)),
           price_at: ctx.price,
           reflection,
+          run_audit: audit ?? null,
         },
       },
     });

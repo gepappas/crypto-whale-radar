@@ -167,6 +167,16 @@ export interface CouncilRunResult {
   transcript: AgentMessage[];
 }
 
+/** Server-persisted lifecycle metadata for an auditable council run. */
+export interface CouncilRunAudit {
+  runId: string;
+  startedAt: string;
+  completedAt: string;
+  status: 'completed' | 'aborted' | 'failed';
+  analystSnapshotAt?: string;
+  agentCount: number;
+}
+
 /** Numeric summary of how this token's past graded calls actually played
  *  out, scored at each call's LONGEST available realized-return horizon
  *  (now out to 30d — see council-persist's bucketFor). Distinct from

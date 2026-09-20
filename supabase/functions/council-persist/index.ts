@@ -42,6 +42,32 @@ function boundedJson(value: unknown, maxBytes: number, field: string): unknown {
   return value ?? null;
 }
 
+function validateAudit(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const audit = raw as Record<string, unknown>;
+  if (typeof audit.runId !== 'string' || !/^[a-zA-Z0-9_-]{8,80}$/.test(audit.runId)) {
+    throw new Error('run_audit.runId is invalid');
+  }
+  if (audit.status !== 'completed' && audit.status !== 'aborted' && audit.status !== 'failed') {
+    throw new Error('run_audit.status is invalid');
+  }
+  if (typeof audit.startedAt !== 'string' || typeof audit.completedAt !== 'string') {
+    throw new Error('run_audit timestamps are required');
+  }
+  const agentCount = Number(audit.agentCount);
+  if (!Number.isInteger(agentCount) || agentCount < 1 || agentCount > 20) {
+    throw new Error('run_audit.agentCount is invalid');
+  }
+  return {
+    runId: audit.runId,
+    startedAt: audit.startedAt,
+    completedAt: audit.completedAt,
+    status: audit.status,
+    analystSnapshotAt: typeof audit.analystSnapshotAt === 'string' ? audit.analystSnapshotAt : null,
+    agentCount,
+  };
+}
+
 function cleanSymbol(raw: unknown): string {
   if (typeof raw !== 'string') throw new Error('symbol is required');
   const sym = raw.trim().toUpperCase();
@@ -115,10 +141,15 @@ Deno.serve(async (req) => {
         final_verdict: p.final_verdict,
         conviction,
         decision: boundedJson(p.decision, 200_000, 'decision'),
-        context: boundedJson(p.context, 200_000, 'context'),
         transcript: boundedJson(p.transcript, 400_000, 'transcript'),
         price_at: priceAt,
         reflection: typeof p.reflection === 'string' ? p.reflection.slice(0, 8000) : null,
+        // Lifecycle metadata is stored inside the existing JSON context column,
+        // avoiding a second mutable audit table while retaining server validation.
+        context: {
+          ...(p.context && typeof p.context === 'object' ? p.context : {}),
+          _runAudit: validateAudit(p.run_audit),
+        },
         // performance is never client-supplied; it starts empty.
         performance: {},
       };
