@@ -85,10 +85,22 @@ The previously identified strategic items are shipped, including:
 - Decision-outcome tracking.
 - Three-tier persistence ladder.
 
+## AI Council delivery status
+
+The multi-agent intelligence roadmap is now implemented through four phases:
+
+- **Phase 1 — Completed:** Shared `AgentMarketState` with structured Technical, Whale Flow, Sentiment, and Regime/Fundamentals analyst reports, evidence, confidence, bias, risk flags, and consensus.
+- **Phase 2 — Completed:** Trader Decision Card with LONG/SHORT/HOLD/AVOID actions, entry, invalidation, stop-loss, take-profit, conviction, and position sizing, protected by a deterministic Risk Committee approval gate.
+- **Phase 3 — Completed:** Durable council-run audit metadata with run IDs, lifecycle timestamps, status, analyst snapshot linkage, agent count, and server-side validation in the council persistence function.
+- **Phase 4 — Completed:** Realized-performance evaluation with hit rate, average return, wins/losses, best/worst outcome, graded calls, sample quality, and confidence-discounted desk score.
+
+Phase 4 remains evaluation-only by design. Adaptive signal-weight changes require a separate walk-forward validation milestone before affecting live decisions.
+
 ## P2 — Longer-term opportunities
 
-- Feed personal outcome learning back into signal weights.
-- Adapt signal weights using accumulated historical performance.
+- Feed validated personal outcome learning back into signal weights.
+- Adapt signal weights using regime- and asset-specific historical performance after walk-forward validation.
+- Add durable server-side regime monitoring and trade-ledger reconciliation beyond council-run audit metadata.
 - Expand the homepage beyond the current regime-panel placement.
 - Continue improving optional execution features without making them the core product.
 

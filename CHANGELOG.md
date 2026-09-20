@@ -6,6 +6,16 @@ The project follows a practical, source-based changelog: entries describe change
 
 ## Unreleased
 
+### AI Council intelligence phases
+
+- Completed Phase 1 with a shared `AgentMarketState` and structured Technical, Whale Flow, Sentiment, and Regime/Fundamentals analyst reports, including evidence, confidence, bias, risk flags, and consensus.
+- Completed Phase 2 with a Trader Decision Card for LONG/SHORT/HOLD/AVOID decisions, entry and invalidation levels, stop-loss/take-profit, conviction, and position sizing.
+- Added a deterministic Risk Committee gate that can approve, reduce, or block a proposed position based on conviction, risk flags, and required protections.
+- Completed Phase 3 with durable council-run audit metadata: run ID, lifecycle timestamps, status, analyst snapshot timestamp, and agent count.
+- Added server-side validation for council-run audit metadata before it is persisted through the `council-persist` Edge Function.
+- Completed Phase 4 with realized council-performance evaluation: hit rate, average return, wins/losses, best/worst outcome, graded calls, sample quality, and confidence-discounted desk score.
+- Kept adaptive signal-weight changes out of the live path until walk-forward validation is available.
+
 - Added bridge attribution utilities for Arbitrum Bridge, LayerZero, and Wormhole labels with conservative direction hints; verified on-chain event ingestion remains planned.
 - Added wallet classification tags for CEX wallets, MEV/arbitrage bots, fresh wallets, and skill-scored smart money.
 - Surfaced wallet categories in the Whale Radar wallet tracker while retaining heuristic labels until server-backed intelligence is available.
